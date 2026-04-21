@@ -1,0 +1,58 @@
+# ============================================================
+# VoxEmotion v2 – Requirements (Python 3.10.x)
+# IMPORTANT: librosa and audioread are REMOVED.
+# Audio I/O uses soundfile + resampy + scipy only.
+# This eliminates the pkg_resources error entirely.
+# ============================================================
+
+# ── Deep Learning ───────────────────────────────────────────
+torch==2.1.0
+torchaudio==2.1.0
+# CPU-only install (default). For GPU see README.
+
+# ── Audio I/O  (NO librosa / NO audioread / NO pkg_resources) ──
+soundfile==0.12.1
+resampy==0.4.2
+scipy==1.11.4
+soxr==0.3.7
+librosa==0.10.2 --no-deps
+audioread==3.0.1
+setuptools==69.5.1 --force-reinstall
+lazy-loader
+msgpack
+pooch
+
+# ── Numerics ────────────────────────────────────────────────
+numpy==1.26.4
+
+# ── Visualisation ───────────────────────────────────────────
+matplotlib==3.8.2
+seaborn==0.13.2
+
+# ── Data / ML ───────────────────────────────────────────────
+pandas==2.1.4
+scikit-learn==1.3.2
+tqdm==4.66.1
+
+# ── Web Framework ───────────────────────────────────────────
+flask==3.0.3
+flask-cors==4.0.1
+werkzeug==3.0.3
+
+# ── File Parsing ────────────────────────────────────────────
+python-docx==1.1.2
+PyPDF2==3.0.1
+pdfminer.six==20231228
+
+# ── Text Normalisation ──────────────────────────────────────
+Unidecode==1.3.8
+inflect==7.3.1
+
+# ── Setuptools shim (ensures pkg_resources exists on Py 3.12) ──
+setuptools>=69.0.0
+
+# ── Jupyter ─────────────────────────────────────────────────
+jupyter==1.0.0
+notebook==7.0.8
+ipykernel==6.29.2
+ipywidgets==8.1.2

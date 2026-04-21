@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoxEmotion – Text-to-Speech with Emotion Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<!-- ░░ CANVAS BACKGROUND ░░ -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ░░ HEADER ░░ -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo-mark">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="18" stroke="var(--accent)" stroke-width="1.5"/>
+        <path d="M10 20 Q15 10 20 20 Q25 30 30 20" stroke="var(--accent)" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <circle cx="20" cy="20" r="3" fill="var(--accent)"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1 class="site-title">VoxEmotion</h1>
+      <p class="site-subtitle">Text-to-Speech with Emotion Control &nbsp;·&nbsp; Deep Learning</p>
+    </div>
+    <div class="header-badge">Tacotron2</div>
+  </div>
+</header>
+
+<!-- ░░ MAIN ░░ -->
+<main class="main-grid">
+
+  <!-- ──────────── BLOCK 1 – Text Input ──────────── -->
+  <section class="card card--text" id="block-text">
+    <div class="card-label"><span>01</span> Text Input</div>
+    <div class="card-header">
+      <h2>Type Your Text</h2>
+      <p>Enter any text. Special characters are automatically removed.</p>
+    </div>
+
+    <div class="emotion-row">
+      <label class="field-label">Select Emotion</label>
+      <div class="emotion-chips" id="emotion-chips-text">
+        <button class="chip" data-emotion="angry"   data-group="text">😠 Angry</button>
+        <button class="chip chip--active" data-emotion="neutral" data-group="text">😐 Neutral</button>
+        <button class="chip" data-emotion="happy"   data-group="text">😊 Happy</button>
+        <button class="chip" data-emotion="sad"     data-group="text">😢 Sad</button>
+        <button class="chip" data-emotion="surprise" data-group="text">😲 Surprise</button>
+      </div>
+    </div>
+
+    <div class="textarea-wrap">
+      <textarea
+        id="text-input"
+        maxlength="10000000"
+        placeholder="e.g. Hello! I am so happy to see you today. The sun is shining bright and everything feels wonderful."
+        spellcheck="false"
+      ></textarea>
+      <div class="char-counter"><span id="char-count">0</span> / 10,000,000</div>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn btn--ghost" id="reset-text">↺ Reset</button>
+      <button class="btn btn--primary" id="submit-text">
+        <span class="btn-inner">▶ Generate Speech</span>
+        <span class="btn-loader" hidden>
+          <span class="spin"></span> Synthesising…
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ──────────── BLOCK 2 – File Upload ──────────── -->
+  <section class="card card--file" id="block-file">
+    <div class="card-label"><span>02</span> File Upload</div>
+    <div class="card-header">
+      <h2>Upload a Document</h2>
+      <p>Supported: .txt &nbsp;·&nbsp; .pdf &nbsp;·&nbsp; .docx &nbsp;·&nbsp; Max 50 MB</p>
+    </div>
+
+    <div class="emotion-row">
+      <label class="field-label">Select Emotion</label>
+      <div class="emotion-chips" id="emotion-chips-file">
+        <button class="chip" data-emotion="angry"   data-group="file">😠 Angry</button>
+        <button class="chip chip--active" data-emotion="neutral" data-group="file">😐 Neutral</button>
+        <button class="chip" data-emotion="happy"   data-group="file">😊 Happy</button>
+        <button class="chip" data-emotion="sad"     data-group="file">😢 Sad</button>
+        <button class="chip" data-emotion="surprise" data-group="file">😲 Surprise</button>
+      </div>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="file-input" accept=".txt,.pdf,.docx" hidden />
+      <div class="drop-content" id="drop-content">
+        <div class="drop-icon">
+          <svg viewBox="0 0 64 64" fill="none"><rect x="8" y="12" width="48" height="40" rx="4" stroke="var(--accent)" stroke-width="1.5"/><path d="M22 32h20M32 22v20" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <p class="drop-label">Drag & drop your file here</p>
+        <p class="drop-sub">or <button class="inline-link" id="browse-btn">browse files</button></p>
+      </div>
+      <div class="file-selected" id="file-selected" hidden>
+        <div class="file-icon">📄</div>
+        <div class="file-info">
+          <span class="file-name" id="selected-file-name"></span>
+          <span class="file-size" id="selected-file-size"></span>
+        </div>
+        <button class="remove-file" id="remove-file" title="Remove">✕</button>
+      </div>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn btn--ghost" id="reset-file">↺ Reset</button>
+      <button class="btn btn--primary" id="submit-file">
+        <span class="btn-inner">▶ Generate Speech</span>
+        <span class="btn-loader" hidden>
+          <span class="spin"></span> Extracting &amp; Synthesising…
+        </span>
+      </button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ░░ OUTPUT PANEL ░░ -->
+<section class="output-panel" id="output-panel" hidden>
+  <div class="output-inner">
+
+    <div class="output-header">
+      <h2>Audio Output</h2>
+      <div class="output-meta">
+        <span class="meta-badge" id="meta-emotion"></span>
+        <span class="meta-duration" id="meta-duration"></span>
+      </div>
+    </div>
+
+    <!-- Waveform -->
+    <div class="waveform-container">
+      <canvas id="waveform-canvas"></canvas>
+      <div class="waveform-progress" id="waveform-progress"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="player-controls">
+      <button class="ctrl-btn" id="btn-play" title="Play">
+        <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21" fill="currentColor"/></svg>
+      </button>
+      <button class="ctrl-btn" id="btn-pause" title="Pause" hidden>
+        <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" fill="currentColor"/><rect x="14" y="4" width="4" height="16" fill="currentColor"/></svg>
+      </button>
+      <button class="ctrl-btn ctrl-btn--sm" id="btn-stop" title="Stop">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" fill="currentColor"/></svg>
+      </button>
+      <div class="time-display">
+        <span id="time-current">0:00</span>
+        <span class="time-sep">/</span>
+        <span id="time-total">0:00</span>
+      </div>
+      <div class="seek-bar-wrap">
+        <div class="seek-bar" id="seek-bar">
+          <div class="seek-fill" id="seek-fill"></div>
+          <div class="seek-thumb" id="seek-thumb"></div>
+        </div>
+      </div>
+      <a class="ctrl-btn ctrl-btn--sm" id="btn-download" title="Download" download>
+        <svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M3 19h18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+
+    <!-- Highlighted transcript -->
+    <div class="transcript-box">
+      <div class="transcript-label">Transcript</div>
+      <div class="transcript-text" id="transcript-text"></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ░░ TOAST ░░ -->
+<div class="toast" id="toast"></div>
+
+<!-- hidden audio element -->
+<audio id="audio-player" crossorigin="anonymous"></audio>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
