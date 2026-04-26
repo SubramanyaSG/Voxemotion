@@ -141,7 +141,7 @@ import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-SMTP_EMAIL    = os.environ.get('SMTP_EMAIL', 'support_voxemotion@gmail.com')
+SMTP_EMAIL    = os.environ.get('SMTP_EMAIL', 'support.voxemotion@gmail.com')
 SMTP_PASS     = os.environ.get('SMTP_APP_PASSWORD', '')
 APP_URL       = os.environ.get('APP_BASE_URL', 'http://127.0.0.1:5000')
 
@@ -170,7 +170,7 @@ def send_reset_email(email, token):
        background:#6e56ff;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
       Reset My Password</a>
     <p style="color:#7878a8;font-size:.8rem">If you didn't request this, ignore this email.</p>
-    <p style="color:#7878a8;font-size:.8rem">Support: support_voxemotion@gmail.com</p></div>"""
+    <p style="color:#7878a8;font-size:.8rem">Support: support.voxemotion@gmail.com</p></div>"""
     send_email(email, 'VoxEmotion – Reset Your Password', html)
 
 # ── User CRUD ─────────────────────────────────────────────────────────────────
