@@ -106,9 +106,8 @@ def login_page():
     if 'user_email' in session:
         return redirect(url_for('index'))
 
-    csrf = generate_csrf()
-
     if request.method == 'POST':
+        # Validate against token minted on the previous page render.
         if not validate_csrf(request.form.get('csrf_token', '')):
             flash('Invalid request. Please try again.', 'error')
             return redirect(url_for('login_page'))
@@ -116,19 +115,19 @@ def login_page():
         ip = request.remote_addr
         if not is_rate_allowed(ip, limit=10, window=60):
             flash('Too many login attempts. Please wait 1 minute.', 'error')
-            return render_template('login.html', csrf_token=csrf)
+            return render_template('login.html', csrf_token=generate_csrf())
 
         email    = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
 
         if not valid_email(email) or not password:
             flash('Please enter a valid email and password.', 'error')
-            return render_template('login.html', csrf_token=csrf)
+            return render_template('login.html', csrf_token=generate_csrf())
 
         user = verify_user(email, password)
         if not user:
             flash('Incorrect email or password.', 'error')
-            return render_template('login.html', csrf_token=csrf)
+            return render_template('login.html', csrf_token=generate_csrf())
 
         session.permanent = bool(request.form.get('remember'))
         session['user_email']    = user['email']
@@ -137,14 +136,12 @@ def login_page():
         session.pop('csrf_token', None)
         return redirect(url_for('index'))
 
-    return render_template('login.html', csrf_token=csrf)
+    return render_template('login.html', csrf_token=generate_csrf())
 
 
 @app.route('/register', methods=['POST'])
 def register():
     """Handle new user registration."""
-    csrf = generate_csrf()
-
     if not validate_csrf(request.form.get('csrf_token', '')):
         flash('Invalid request. Please try again.', 'error')
         return redirect(url_for('login_page'))
@@ -153,11 +150,11 @@ def register():
     wait = get_reg_cooldown(ip)
     if wait:
         flash(f'Please wait {wait} more seconds before registering again.', 'warning')
-        return render_template('login.html', csrf_token=csrf)
+        return render_template('login.html', csrf_token=generate_csrf())
 
     if not is_rate_allowed(ip, limit=3, window=3600):
         flash('Registration limit reached. Please try again later.', 'error')
-        return render_template('login.html', csrf_token=csrf)
+        return render_template('login.html', csrf_token=generate_csrf())
 
     fullname = request.form.get('fullname', '').strip()
     dob      = request.form.get('dob', '').strip()
@@ -167,7 +164,7 @@ def register():
 
     errors = []
     if not valid_fullname(fullname):
-        errors.append('Name must contain letters only — no spaces or special characters.')
+        errors.append("Name can include letters, spaces, hyphens, and apostrophes only.")
     if not valid_dob(dob):
         errors.append('Invalid date of birth. Use DD/MM/YYYY.')
     if not valid_email(email):
@@ -182,15 +179,15 @@ def register():
     if errors:
         for err in errors:
             flash(err, 'error')
-        return render_template('login.html', csrf_token=csrf)
+        return render_template('login.html', csrf_token=generate_csrf())
 
     if user_exists(email):
         flash('An account with this email already exists.', 'error')
-        return render_template('login.html', csrf_token=csrf)
+        return render_template('login.html', csrf_token=generate_csrf())
 
     if not create_user(email, password, fullname, dob):
         flash('Registration failed. Please try again.', 'error')
-        return render_template('login.html', csrf_token=csrf)
+        return render_template('login.html', csrf_token=generate_csrf())
 
     set_reg_cooldown(ip)
     flash('Account created successfully! Please log in.', 'success')
@@ -200,20 +197,18 @@ def register():
 @app.route('/forgot-password', methods=['POST'])
 def forgot_password():
     """Send password reset email."""
-    csrf = generate_csrf()
-
     if not validate_csrf(request.form.get('csrf_token', '')):
         flash('Invalid request.', 'error')
         return redirect(url_for('login_page'))
 
     if not is_rate_allowed(request.remote_addr, limit=3, window=300):
         flash('Too many reset requests. Please wait 5 minutes.', 'error')
-        return render_template('login.html', csrf_token=csrf)
+        return render_template('login.html', csrf_token=generate_csrf())
 
     email = request.form.get('email', '').strip().lower()
     if not valid_email(email):
         flash('Please enter a valid email address.', 'error')
-        return render_template('login.html', csrf_token=csrf)
+        return render_template('login.html', csrf_token=generate_csrf())
 
     # Always show same message to prevent email enumeration
     if user_exists(email):
@@ -227,13 +222,11 @@ def forgot_password():
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """Password reset page (accessed via emailed link)."""
-    csrf = generate_csrf()
-
     if request.method == 'GET':
         if not is_reset_token_valid(token):
             flash('This reset link is invalid or has expired. Please request a new one.', 'error')
             return redirect(url_for('login_page'))
-        return render_template('reset_password.html', token=token, csrf_token=csrf)
+        return render_template('reset_password.html', token=token, csrf_token=generate_csrf())
 
     if not validate_csrf(request.form.get('csrf_token', '')):
         flash('Invalid request.', 'error')
@@ -244,11 +237,11 @@ def reset_password(token):
 
     if not valid_password(password):
         flash('Password must be 8+ characters with 1 uppercase letter and 1 number.', 'error')
-        return render_template('reset_password.html', token=token, csrf_token=csrf)
+        return render_template('reset_password.html', token=token, csrf_token=generate_csrf())
 
     if password != confirm:
         flash('Passwords do not match.', 'error')
-        return render_template('reset_password.html', token=token, csrf_token=csrf)
+        return render_template('reset_password.html', token=token, csrf_token=generate_csrf())
 
     email = consume_reset_token(token)
     if not email:

@@ -30,7 +30,43 @@ _fb_auth_mod = None
 USE_FIREBASE = False
 
 
-def init_firebase() -> bool:
+def _is_invalid_jwt_signature_error(err: Exception) -> bool:
+    msg = str(err).lower()
+    return 'invalid_grant' in msg and 'invalid jwt signature' in msg
+
+
+def _load_firebase_credential_dict() -> dict | None:
+    """Load and normalize service-account JSON before Firebase init."""
+    try:
+        with open(FIREBASE_CREDENTIALS, 'r', encoding='utf-8') as f:
+            cred = json.load(f)
+
+        private_key = cred.get('private_key', '')
+        if isinstance(private_key, str):
+            # Handles both normal JSON keys and accidentally escaped newline strings.
+            cred['private_key'] = private_key.replace('\\r\\n', '\\n').replace('\\n', '\n')
+
+        required = ['type', 'project_id', 'private_key', 'client_email']
+        missing = [k for k in required if not cred.get(k)]
+        if missing:
+            print(f'⚠  Firebase credentials missing required fields: {missing}')
+            return None
+        return cred
+    except Exception as e:
+        print(f'⚠  Could not read firebase_credentials.json: {e}')
+        return None
+
+
+def _print_invalid_jwt_help() -> None:
+    print('⚠  Firebase rejected the service-account key (Invalid JWT Signature).')
+    print('   Checklist:')
+    print('   1) Sync your system date/time.')
+    print('   2) Generate a NEW service-account JSON key in Firebase/GCP console.')
+    print('   3) Replace firebase_credentials.json with that new key.')
+    print('   4) Restart the app.')
+
+
+def init_firebase(force_reload: bool = False) -> bool:
     global _fb_app, _fb_db, _fb_auth_mod, USE_FIREBASE
     if not os.path.exists(FIREBASE_CREDENTIALS):
         print('⚠  firebase_credentials.json not found → LOCAL mode (users.json)')
@@ -38,8 +74,16 @@ def init_firebase() -> bool:
     try:
         import firebase_admin
         from firebase_admin import credentials, firestore, auth as fba
+        if force_reload and firebase_admin._apps:
+            for app in list(firebase_admin._apps.values()):
+                firebase_admin.delete_app(app)
+
         if not firebase_admin._apps:
-            cred    = credentials.Certificate(FIREBASE_CREDENTIALS)
+            cred_dict = _load_firebase_credential_dict()
+            if not cred_dict:
+                USE_FIREBASE = False
+                return False
+            cred    = credentials.Certificate(cred_dict)
             _fb_app = firebase_admin.initialize_app(cred)
         else:
             _fb_app = firebase_admin.get_app()
@@ -49,7 +93,10 @@ def init_firebase() -> bool:
         print('✅  Firebase Firestore connected.')
         return True
     except Exception as e:
+        if _is_invalid_jwt_signature_error(e):
+            _print_invalid_jwt_help()
         print(f'⚠  Firebase init failed: {e} → LOCAL mode')
+        USE_FIREBASE = False
         return False
 
 
@@ -220,7 +267,7 @@ def valid_password(pw: str) -> bool:
 
 
 def valid_fullname(name: str) -> bool:
-    return bool(re.match(r'^[A-Za-z]+$', name))
+    return bool(re.match(r"^[A-Za-z]+(?:[ '-][A-Za-z]+)*$", name))
 
 
 def valid_dob(dob: str) -> bool:
@@ -238,11 +285,15 @@ def valid_dob(dob: str) -> bool:
 # ── User CRUD ─────────────────────────────────────────────────────────────────
 def user_exists(email: str) -> bool:
     if USE_FIREBASE:
-        try:
-            _fb_auth_mod.get_user_by_email(email)
-            return True
-        except Exception:
-            return False
+        for attempt in range(2):
+            try:
+                _fb_auth_mod.get_user_by_email(email)
+                return True
+            except Exception as e:
+                if attempt == 0 and _is_invalid_jwt_signature_error(e):
+                    if init_firebase(force_reload=True):
+                        continue
+                return False
     return email in _load_users()
 
 
@@ -250,20 +301,27 @@ def create_user(email: str, password: str,
                 fullname: str, dob: str) -> bool:
     pw_hash = hash_password(password)
     if USE_FIREBASE:
-        try:
-            fb_user = _fb_auth_mod.create_user(email=email, display_name=fullname)
-            _fb_db.collection('users').document(fb_user.uid).set({
-                'fullname' : fullname,
-                'dob'      : dob,
-                'email'    : email,
-                'pw_hash'  : pw_hash,
-                'created'  : datetime.now(timezone.utc).isoformat(),
-                'role'     : 'user'
-            })
-            return True
-        except Exception as e:
-            print(f'Firebase create_user error: {e}')
-            return False
+        for attempt in range(2):
+            try:
+                fb_user = _fb_auth_mod.create_user(email=email, display_name=fullname)
+                _fb_db.collection('users').document(fb_user.uid).set({
+                    'fullname' : fullname,
+                    'dob'      : dob,
+                    'email'    : email,
+                    'pw_hash'  : pw_hash,
+                    'created'  : datetime.now(timezone.utc).isoformat(),
+                    'role'     : 'user'
+                })
+                return True
+            except Exception as e:
+                if attempt == 0 and _is_invalid_jwt_signature_error(e):
+                    print('⚠  Retrying Firebase create_user after credential reload...')
+                    if init_firebase(force_reload=True):
+                        continue
+                if _is_invalid_jwt_signature_error(e):
+                    _print_invalid_jwt_help()
+                print(f'Firebase create_user error: {e}')
+                return False
     else:
         users = _load_users()
         users[email] = {
@@ -280,20 +338,25 @@ def create_user(email: str, password: str,
 def verify_user(email: str, password: str) -> dict | None:
     """Returns user dict if credentials are valid, else None."""
     if USE_FIREBASE:
-        try:
-            fb_user = _fb_auth_mod.get_user_by_email(email)
-            doc     = _fb_db.collection('users').document(fb_user.uid).get()
-            if doc.exists:
-                data = doc.to_dict()
-                if check_password(password, data.get('pw_hash', '')):
-                    return {
-                        'email'   : email,
-                        'fullname': data.get('fullname', ''),
-                        'uid'     : fb_user.uid,
-                        'role'    : data.get('role', 'user')
-                    }
-        except Exception:
-            return None
+        for attempt in range(2):
+            try:
+                fb_user = _fb_auth_mod.get_user_by_email(email)
+                doc     = _fb_db.collection('users').document(fb_user.uid).get()
+                if doc.exists:
+                    data = doc.to_dict()
+                    if check_password(password, data.get('pw_hash', '')):
+                        return {
+                            'email'   : email,
+                            'fullname': data.get('fullname', ''),
+                            'uid'     : fb_user.uid,
+                            'role'    : data.get('role', 'user')
+                        }
+                return None
+            except Exception as e:
+                if attempt == 0 and _is_invalid_jwt_signature_error(e):
+                    if init_firebase(force_reload=True):
+                        continue
+                return None
     else:
         users = _load_users()
         rec   = users.get(email)
@@ -309,16 +372,22 @@ def verify_user(email: str, password: str) -> dict | None:
 def update_password(email: str, new_password: str) -> bool:
     pw_hash = hash_password(new_password)
     if USE_FIREBASE:
-        try:
-            fb_user = _fb_auth_mod.get_user_by_email(email)
-            _fb_auth_mod.update_user(fb_user.uid, password=new_password)
-            _fb_db.collection('users').document(fb_user.uid).update(
-                {'pw_hash': pw_hash}
-            )
-            return True
-        except Exception as e:
-            print(f'Firebase update_password error: {e}')
-            return False
+        for attempt in range(2):
+            try:
+                fb_user = _fb_auth_mod.get_user_by_email(email)
+                _fb_auth_mod.update_user(fb_user.uid, password=new_password)
+                _fb_db.collection('users').document(fb_user.uid).update(
+                    {'pw_hash': pw_hash}
+                )
+                return True
+            except Exception as e:
+                if attempt == 0 and _is_invalid_jwt_signature_error(e):
+                    if init_firebase(force_reload=True):
+                        continue
+                if _is_invalid_jwt_signature_error(e):
+                    _print_invalid_jwt_help()
+                print(f'Firebase update_password error: {e}')
+                return False
     else:
         users = _load_users()
         if email in users:

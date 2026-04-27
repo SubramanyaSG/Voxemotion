@@ -109,7 +109,10 @@ if (dobInput) {
 const nameInput = document.getElementById('reg-name');
 if (nameInput) {
   nameInput.addEventListener('input', () => {
-    nameInput.value = nameInput.value.replace(/[^A-Za-z]/g, '');
+    nameInput.value = nameInput.value
+      .replace(/[^A-Za-z '\-]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trimStart();
   });
 }
 
@@ -139,6 +142,10 @@ function validateDOB(dob) {
   if (d.getFullYear() !== yyyy || d.getMonth() !== mm-1 || d.getDate() !== dd) return false;
   const age = (new Date() - d) / (365.25 * 24 * 3600 * 1000);
   return age >= 5 && age <= 120;
+}
+
+function validateFullname(name) {
+  return /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/.test(name);
 }
 
 // ── Login form validation ─────────────────────────────────────────────────────
@@ -176,8 +183,8 @@ if (registerForm) {
     const confirm = document.getElementById('reg-confirm').value;
     const agreed  = document.getElementById('agree-terms').checked;
 
-    if (!name || !/^[A-Za-z]+$/.test(name)) {
-      setError('err-reg-name', 'Name must contain letters only — no spaces or special characters.');
+    if (!name || !validateFullname(name)) {
+      setError('err-reg-name', "Name can include letters, spaces, hyphens, and apostrophes only.");
       markInput('reg-name', true); ok = false;
     }
     if (!validateDOB(dob)) {
