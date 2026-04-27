@@ -230,8 +230,10 @@ def is_reset_token_valid(token: str) -> bool:
 # ── Email sending ─────────────────────────────────────────────────────────────
 def send_email(to: str, subject: str, html_body: str) -> bool:
     """Send email via Gmail SMTP. Prints to console if SMTP not configured."""
-    if not SMTP_PASSWORD:
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
         print(f'\n[EMAIL – SMTP not configured, showing in console]')
+        print('  Missing SMTP_EMAIL or SMTP_APP_PASSWORD/SMTP_PASSWORD.')
+        print('  Add these values in .env or system environment, then restart app.')
         print(f'  To      : {to}')
         print(f'  Subject : {subject}')
         print(f'  Link    : (see HTML body)')

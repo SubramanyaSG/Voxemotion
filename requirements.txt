@@ -8,7 +8,7 @@ torchaudio==2.1.0
 # Install PyTorch separately with this command:
 # pip install torch==2.1.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
 
-# ── Audio I/O  (NO librosa / NO audioread / NO pkg_resources) ──
+# ── Audio I/O 
 soundfile==0.12.1
 soxr==0.3.7
 scipy==1.11.4
@@ -46,3 +46,4 @@ firebase-admin==6.5.0
 
 # ── Setuptools (fixes pkg_resources on Python 3.12) ─────────
 setuptools>=69.0.0
+python-dotenv
