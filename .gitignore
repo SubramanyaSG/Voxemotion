@@ -1,0 +1,27 @@
+# Secrets
+.env
+firebase_credentials.json
+users.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+env/
+*.egg-info/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Large outputs
+outputs/*.wav
+outputs/*.png
+outputs/*.csv
+models/*.pth
+
+# OS
+.DS_Store
+Thumbs.db
