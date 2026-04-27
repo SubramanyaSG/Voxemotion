@@ -58,12 +58,15 @@ os.makedirs(MODEL_DIR,  exist_ok=True)
 # ════════════════════════════════════════════════════════════════════════════
 _fb_app = _fb_db = _fb_auth_mod = None
 _USE_FIREBASE = False
+_FB_INIT_ERROR = ''
 
 def init_firebase():
-    global _fb_app, _fb_db, _fb_auth_mod, _USE_FIREBASE
+    global _fb_app, _fb_db, _fb_auth_mod, _USE_FIREBASE, _FB_INIT_ERROR
     creds_path = os.path.join(BASE_DIR, 'firebase_credentials.json')
+    _FB_INIT_ERROR = ''
     if not os.path.exists(creds_path):
-        print('⚠  firebase_credentials.json not found → LOCAL mode (users.json)')
+        _FB_INIT_ERROR = f'Credentials file not found at: {creds_path}'
+        print(f'[WARN] {_FB_INIT_ERROR} -> LOCAL mode (users.json)')
         return False
     try:
         import firebase_admin
@@ -76,13 +79,16 @@ def init_firebase():
         _fb_db         = firestore.client()
         _fb_auth_mod   = fb_auth
         _USE_FIREBASE  = True
-        print('✅  Firebase Firestore connected.')
+        _FB_INIT_ERROR = ''
+        print('[OK] Firebase Firestore connected.')
         return True
     except Exception as e:
-        print(f'⚠  Firebase init failed: {e} → LOCAL mode')
+        _FB_INIT_ERROR = str(e)
+        print(f'[WARN] Firebase init failed on {sys.executable}: {_FB_INIT_ERROR} -> LOCAL mode')
         return False
 
 init_firebase()
+print(f"[AUTH] Storage mode: {'FIREBASE' if _USE_FIREBASE else 'LOCAL users.json'} | Python: {sys.executable}")
 
 # ── Local user store fallback ─────────────────────────────────────────────────
 _LOCAL_USERS = os.path.join(BASE_DIR, 'users.json')
@@ -109,6 +115,8 @@ except ImportError:
 # ── CSRF ──────────────────────────────────────────────────────────────────────
 def gen_csrf():
     t = secrets.token_hex(32); session['csrf_token'] = t; return t
+def ensure_csrf():
+    return session.get('csrf_token') or gen_csrf()
 def ok_csrf(t):
     s = session.get('csrf_token')
     return bool(s and t and hmac.compare_digest(s, t))
@@ -148,7 +156,7 @@ APP_URL       = os.environ.get('APP_BASE_URL', 'http://127.0.0.1:5000')
 def send_email(to, subject, html):
     if not SMTP_PASS:
         print(f'[EMAIL] To:{to} | Subject:{subject}')
-        print(f'[EMAIL] (No SMTP configured – showing in console)')
+        print(f'[EMAIL] (No SMTP configured - showing in console)')
         return True
     try:
         msg = MIMEMultipart('alternative')
@@ -191,6 +199,8 @@ def create_user(email, password, fullname, dob):
             return True
         except Exception as e: print(f'Firebase create_user: {e}'); return False
     else:
+        if os.path.exists(os.path.join(BASE_DIR, 'firebase_credentials.json')):
+            print(f'[WARN] Firebase credentials were found, but Firebase mode is OFF. Writing user locally. Reason: {_FB_INIT_ERROR or "unknown"}')
         u = _lu()
         u[email] = {'fullname':fullname,'dob':dob,'pw_hash':h,
                     'role':'user','created':datetime.now().isoformat()}
@@ -452,10 +462,10 @@ def security_headers(resp):
 @app.route('/login', methods=['GET','POST'])
 def login_page():
     if 'user_email' in session: return redirect(url_for('index'))
-    csrf = gen_csrf()
     if request.method == 'POST':
         if not ok_csrf(request.form.get('csrf_token','')):
             flash('Invalid request. Please try again.','error'); return redirect(url_for('login_page'))
+        csrf = gen_csrf()
         ip = request.remote_addr
         if not rate_ok(ip,10,60):
             flash('Too many attempts. Wait 1 minute.','error')
@@ -475,13 +485,13 @@ def login_page():
         session['user_role']     = user.get('role','user')
         session.pop('csrf_token',None)
         return redirect(url_for('index'))
-    return render_template('login.html', csrf_token=csrf)
+    return render_template('login.html', csrf_token=ensure_csrf())
 
 @app.route('/register', methods=['POST'])
 def register():
-    csrf = gen_csrf()
     if not ok_csrf(request.form.get('csrf_token','')):
         flash('Invalid request.','error'); return redirect(url_for('login_page'))
+    csrf = gen_csrf()
     ip = request.remote_addr
     w  = reg_wait(ip)
     if w:
@@ -512,14 +522,16 @@ def register():
         flash('Registration failed. Try again.','error')
         return render_template('login.html', csrf_token=csrf)
     set_reg_cd(ip)
+    if not _USE_FIREBASE and os.path.exists(os.path.join(BASE_DIR, 'firebase_credentials.json')):
+        flash('Account created in LOCAL mode (users.json). Firebase is not active in this runtime. Check Python environment and firebase-admin package.', 'warning')
     flash('Account created! Please log in.','success')
     return redirect(url_for('login_page'))
 
 @app.route('/forgot-password', methods=['POST'])
 def forgot_password():
-    csrf = gen_csrf()
     if not ok_csrf(request.form.get('csrf_token','')):
         flash('Invalid request.','error'); return redirect(url_for('login_page'))
+    csrf = gen_csrf()
     if not rate_ok(request.remote_addr,3,300):
         flash('Too many reset requests. Wait 5 minutes.','error')
         return render_template('login.html', csrf_token=csrf)
@@ -534,14 +546,14 @@ def forgot_password():
 
 @app.route('/reset-password/<token>', methods=['GET','POST'])
 def reset_password(token):
-    csrf = gen_csrf()
     if request.method=='GET':
         r = _rst.get(token)
         if not r or r['used'] or time.time()>r['exp']:
             flash('Reset link invalid or expired.','error'); return redirect(url_for('login_page'))
-        return render_template('reset_password.html', token=token, csrf_token=csrf)
+        return render_template('reset_password.html', token=token, csrf_token=gen_csrf())
     if not ok_csrf(request.form.get('csrf_token','')):
         flash('Invalid request.','error'); return redirect(url_for('login_page'))
+    csrf = gen_csrf()
     pw  = request.form.get('password','')
     cpw = request.form.get('confirm_password','')
     if not vld_pw(pw):
@@ -619,8 +631,9 @@ def e404(e): return render_template('login.html',csrf_token=gen_csrf()),404
 def e403(e): return jsonify({'error':'Forbidden'}),403
 
 if __name__ == '__main__':
-    print('🎙  VoxEmotion  v4  |  Auth + Security')
+    print('VoxEmotion v4 | Auth + Security')
     print(f'   Firebase  : {"ON" if _USE_FIREBASE else "LOCAL (users.json)"}')
     print(f'   Dataset   : {DATASET_ROOT}')
     _load_t2()
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    

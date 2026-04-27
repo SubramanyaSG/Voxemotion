@@ -18,13 +18,23 @@ if %errorlevel% neq 0 (
     pause & exit /b 1
 )
 
-if not exist "venv\" (
+if exist "venv\Scripts\python.exe" (
+    venv\Scripts\python.exe --version >nul 2>nul
+    if %errorlevel% neq 0 (
+        echo  [WARN] Existing venv is broken. Recreating it...
+        rmdir /s /q venv
+    )
+)
+
+if not exist "venv\Scripts\python.exe" (
     echo  [1/6] Creating virtual environment...
     python -m venv venv
 )
 
 echo  [2/6] Activating virtual environment...
 call venv\Scripts\activate.bat
+
+python -c "import sys; print(' [ENV] Active Python:', sys.executable)"
 
 echo  [3/6] Upgrading pip + setuptools...
 python -m pip install --upgrade pip setuptools wheel --quiet
@@ -34,6 +44,12 @@ pip install torch==2.1.0 torchaudio==2.1.0 --index-url https://download.pytorch.
 
 echo  [5/6] Installing all dependencies...
 pip install -r requirements.txt --quiet
+
+python -c "import firebase_admin; print(' [OK] firebase_admin available in active environment')" >nul 2>nul
+if %errorlevel% neq 0 (
+    echo  [WARN] firebase_admin not found in this environment. Installing now...
+    pip install firebase-admin==6.5.0 --quiet
+)
 
 echo  [6/6] Registering Jupyter kernel...
 python -m ipykernel install --user --name=voxemotion --display-name "VoxEmotion v4 (Python 3.10)"
