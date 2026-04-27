@@ -28,8 +28,9 @@ class EmotionSynthesizer:
 
     def __init__(self, dataset_df, output_dir: str = OUTPUT_DIR,
                  sr: int = SAMPLE_RATE):
-        self.df  = dataset_df[dataset_df['readable'] == True].copy() \
-                   if not dataset_df.empty else dataset_df
+        self.df = dataset_df[dataset_df['readable'] == True].copy() \
+                  if (dataset_df is not None and not dataset_df.empty) else \
+                  __import__('pandas').DataFrame()
         self.out = output_dir
         self.sr  = sr
 

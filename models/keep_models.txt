@@ -1,0 +1,1 @@
+echo "Model checkpoints stored here" > models/keep_models.txt

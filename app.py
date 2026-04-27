@@ -384,7 +384,7 @@ if __name__ == '__main__':
     print(f'  URL      : http://127.0.0.1:{PORT}')
     print(f'  Dataset  : {BASE_DIR}')
     print(f'  Outputs  : {OUTPUT_DIR}')
-    print(f'  Press Ctrl+C to stop')
+    print(f'  Press Ctrl+C to exit')
     print('=' * 55 + '\n')
 
     app.run(

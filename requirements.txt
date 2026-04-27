@@ -45,3 +45,4 @@ firebase-admin==6.5.0
 
 # ── Setuptools (fixes pkg_resources on Python 3.12) ─────────
 setuptools>=69.0.0
+python-dotenv
