@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="referrer" content="strict-origin-when-cross-origin"/>
+  <title>VoxEmotion – Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Space+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/css/auth.css"/>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+
+<div class="auth-wrap">
+  <div class="auth-card" id="auth-card">
+
+    <!-- Logo -->
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="var(--accent)" stroke-width="1.5"/><path d="M10 20 Q15 10 20 20 Q25 30 30 20" stroke="var(--accent)" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="var(--accent)"/></svg>
+      </div>
+      <div>
+        <h1 class="brand-name">VoxEmotion</h1>
+        <p class="brand-tagline">Text-to-Speech · Emotion Control</p>
+      </div>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="flash flash--{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- LOGIN FORM -->
+    <div class="form-panel" id="panel-login">
+      <h2 class="panel-title">Welcome back</h2>
+      <p class="panel-sub">Sign in to your account</p>
+
+      <form method="POST" action="/login" id="login-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+        <div class="field-group">
+          <label class="field-label">Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input type="email" name="email" id="login-email"
+                   placeholder="you@example.com"
+                   autocomplete="email" required maxlength="254"/>
+          </div>
+          <span class="field-error" id="err-login-email"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" name="password" id="login-password"
+                   placeholder="Enter your password"
+                   autocomplete="current-password" required maxlength="128"/>
+            <button type="button" class="toggle-pw" data-target="login-password" tabindex="-1">👁</button>
+          </div>
+          <span class="field-error" id="err-login-pw"></span>
+        </div>
+
+        <div class="row-split">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember"/> Remember me
+          </label>
+          <button type="button" class="link-btn" onclick="showPanel('panel-forgot')">Forgot password?</button>
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full" id="login-btn">
+          <span class="btn-text">Sign In</span>
+          <span class="btn-loader" hidden><span class="spin"></span></span>
+        </button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+      <p class="switch-text">New to VoxEmotion?
+        <button class="link-btn" onclick="showPanel('panel-register')">Create an account</button>
+      </p>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div class="form-panel hidden" id="panel-register">
+      <h2 class="panel-title">Create Account</h2>
+      <p class="panel-sub">Join VoxEmotion — it's free</p>
+
+      <form method="POST" action="/register" id="register-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+        <div class="field-group">
+          <label class="field-label">Full Name <span class="hint">(letters, spaces, hyphens, apostrophes)</span></label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" name="fullname" id="reg-name"
+                   placeholder="John Doe"
+                   pattern="^[A-Za-z]+([ '-][A-Za-z]+)*$"
+                   autocomplete="name" required maxlength="60"/>
+          </div>
+          <span class="field-error" id="err-reg-name"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Date of Birth</label>
+          <div class="input-wrap">
+            <span class="input-icon">📅</span>
+            <input type="text" name="dob" id="reg-dob"
+                   placeholder="DD/MM/YYYY"
+                   pattern="^\d{2}/\d{2}/\d{4}$"
+                   maxlength="10" required/>
+          </div>
+          <span class="field-error" id="err-reg-dob"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input type="email" name="email" id="reg-email"
+                   placeholder="you@example.com"
+                   autocomplete="email" required maxlength="254"/>
+          </div>
+          <span class="field-error" id="err-reg-email"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Password <span class="hint">(min 8 chars, 1 uppercase, 1 number)</span></label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" name="password" id="reg-password"
+                   placeholder="Create a strong password"
+                   autocomplete="new-password" required maxlength="128"/>
+            <button type="button" class="toggle-pw" data-target="reg-password" tabindex="-1">👁</button>
+          </div>
+          <div class="pw-strength" id="pw-strength">
+            <div class="pw-bar"><div class="pw-fill" id="pw-fill"></div></div>
+            <span class="pw-label" id="pw-label">Enter password</span>
+          </div>
+          <span class="field-error" id="err-reg-pw"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" name="confirm_password" id="reg-confirm"
+                   placeholder="Repeat your password"
+                   autocomplete="new-password" required maxlength="128"/>
+          </div>
+          <span class="field-error" id="err-reg-confirm"></span>
+        </div>
+
+        <div class="terms-check">
+          <label class="checkbox-label">
+            <input type="checkbox" name="agree_terms" id="agree-terms" required/>
+            I agree to the <button type="button" class="link-btn">Terms &amp; Conditions</button>
+          </label>
+        </div>
+
+        <div class="rate-notice">⏱ Registration has a 30-second cooldown to protect our servers.</div>
+
+        <button type="submit" class="btn btn--primary btn--full" id="register-btn">
+          <span class="btn-text">Create Account</span>
+          <span class="btn-loader" hidden><span class="spin"></span></span>
+        </button>
+      </form>
+
+      <p class="switch-text">Already have an account?
+        <button class="link-btn" onclick="showPanel('panel-login')">Sign in</button>
+      </p>
+    </div>
+
+    <!-- FORGOT PASSWORD FORM -->
+    <div class="form-panel hidden" id="panel-forgot">
+      <h2 class="panel-title">Reset Password</h2>
+      <p class="panel-sub">Enter your email to receive a secure reset link</p>
+
+      <form method="POST" action="/forgot-password" id="forgot-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+
+        <div class="field-group">
+          <label class="field-label">Registered Email Address</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input type="email" name="email" id="forgot-email"
+                   placeholder="you@example.com"
+                   autocomplete="email" required maxlength="254"/>
+          </div>
+          <span class="field-error" id="err-forgot-email"></span>
+        </div>
+
+        <div class="info-box">
+          🔐 A time-limited secure reset link will be sent to your email. The link expires in 15 minutes and can only be used once.
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full" id="forgot-btn">
+          <span class="btn-text">Send Reset Link</span>
+          <span class="btn-loader" hidden><span class="spin"></span></span>
+        </button>
+      </form>
+
+      <p class="switch-text">
+        <button class="link-btn" onclick="showPanel('panel-login')">← Back to login</button>
+      </p>
+    </div>
+
+  </div><!-- /auth-card -->
+
+  <!-- Support footer -->
+  <p class="support-footer">
+    For more information contact support at
+    <a href="mailto:support.voxemotion@gmail.com">support.voxemotion@gmail.com</a>
+  </p>
+</div>
+
+<!-- Cookie Banner -->
+<div class="cookie-banner" id="cookie-banner">
+  <div class="cookie-inner">
+    <div class="cookie-text">
+      <strong>🍪 Cookie Preferences</strong>
+      <p>We use cookies to keep you signed in and improve your experience.
+         Essential cookies are required for the site to function.
+         Analytics cookies help us understand how you use VoxEmotion.</p>
+    </div>
+    <div class="cookie-actions">
+      <button class="btn btn--ghost btn--sm" onclick="acceptCookies('minimal')">Essential Only</button>
+      <button class="btn btn--primary btn--sm" onclick="acceptCookies('all')">Accept All</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/auth.js"></script>
+</body>
+</html>

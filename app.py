@@ -355,8 +355,225 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__,
             template_folder=os.path.join(BASE_DIR, 'templates'),
             static_folder=os.path.join(BASE_DIR, 'static'))
+<<<<<<< Updated upstream
 CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+=======
+
+app.secret_key = SECRET_KEY
+app.config.update(
+    SESSION_COOKIE_HTTPONLY   = True,
+    SESSION_COOKIE_SAMESITE   = 'Lax',
+    SESSION_COOKIE_SECURE     = False,   # Set True in production with HTTPS
+    PERMANENT_SESSION_LIFETIME= timedelta(days=7),
+    MAX_CONTENT_LENGTH        = 50 * 1024 * 1024,   # 50 MB
+)
+CORS(app, supports_credentials=True)
+
+
+# ── Security headers on every response ───────────────────────────────────────
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Content-Type-Options']  = 'nosniff'
+    response.headers['X-Frame-Options']         = 'DENY'
+    response.headers['X-XSS-Protection']        = '1; mode=block'
+    response.headers['Referrer-Policy']         = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy']      = 'microphone=(), camera=()'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
+        "https://fonts.gstatic.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "connect-src 'self'; "
+        "img-src 'self' data:; "
+        "media-src 'self' blob:;"
+    )
+    return response
+
+
+# ── Login required decorator ──────────────────────────────────────────────────
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_email' not in session:
+            flash('Please log in to continue.', 'info')
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# AUTH ROUTES
+# ════════════════════════════════════════════════════════════════════════════
+
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    """Login page — also contains register and forgot-password panels."""
+    if 'user_email' in session:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        # Validate against token minted on the previous page render.
+        if not validate_csrf(request.form.get('csrf_token', '')):
+            flash('Invalid request. Please try again.', 'error')
+            return redirect(url_for('login_page'))
+
+        ip = request.remote_addr
+        if not is_rate_allowed(ip, limit=10, window=60):
+            flash('Too many login attempts. Please wait 1 minute.', 'error')
+            return render_template('login.html', csrf_token=generate_csrf())
+
+        email    = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+
+        if not valid_email(email) or not password:
+            flash('Please enter a valid email and password.', 'error')
+            return render_template('login.html', csrf_token=generate_csrf())
+
+        user = verify_user(email, password)
+        if not user:
+            flash('Incorrect email or password.', 'error')
+            return render_template('login.html', csrf_token=generate_csrf())
+
+        session.permanent = bool(request.form.get('remember'))
+        session['user_email']    = user['email']
+        session['user_fullname'] = user.get('fullname', '')
+        session['user_role']     = user.get('role', 'user')
+        session.pop('csrf_token', None)
+        return redirect(url_for('index'))
+
+    return render_template('login.html', csrf_token=generate_csrf())
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    """Handle new user registration."""
+    if not validate_csrf(request.form.get('csrf_token', '')):
+        flash('Invalid request. Please try again.', 'error')
+        return redirect(url_for('login_page'))
+
+    ip   = request.remote_addr
+    wait = get_reg_cooldown(ip)
+    if wait:
+        flash(f'Please wait {wait} more seconds before registering again.', 'warning')
+        return render_template('login.html', csrf_token=generate_csrf())
+
+    if not is_rate_allowed(ip, limit=3, window=3600):
+        flash('Registration limit reached. Please try again later.', 'error')
+        return render_template('login.html', csrf_token=generate_csrf())
+
+    fullname = request.form.get('fullname', '').strip()
+    dob      = request.form.get('dob', '').strip()
+    email    = request.form.get('email', '').strip().lower()
+    password = request.form.get('password', '')
+    confirm  = request.form.get('confirm_password', '')
+
+    errors = []
+    if not valid_fullname(fullname):
+        errors.append("Name can include letters, spaces, hyphens, and apostrophes only.")
+    if not valid_dob(dob):
+        errors.append('Invalid date of birth. Use DD/MM/YYYY.')
+    if not valid_email(email):
+        errors.append('Invalid email address.')
+    if not valid_password(password):
+        errors.append('Password must be 8+ characters with 1 uppercase letter and 1 number.')
+    if password != confirm:
+        errors.append('Passwords do not match.')
+    if not request.form.get('agree_terms'):
+        errors.append('You must accept the Terms & Conditions.')
+
+    if errors:
+        for err in errors:
+            flash(err, 'error')
+        return render_template('login.html', csrf_token=generate_csrf())
+
+    if user_exists(email):
+        flash('An account with this email already exists.', 'error')
+        return render_template('login.html', csrf_token=generate_csrf())
+
+    if not create_user(email, password, fullname, dob):
+        flash('Registration failed. Please try again.', 'error')
+        return render_template('login.html', csrf_token=generate_csrf())
+
+    set_reg_cooldown(ip)
+    flash('Account created successfully! Please log in.', 'success')
+    return redirect(url_for('login_page'))
+
+
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """Send password reset email."""
+    if not validate_csrf(request.form.get('csrf_token', '')):
+        flash('Invalid request.', 'error')
+        return redirect(url_for('login_page'))
+
+    if not is_rate_allowed(request.remote_addr, limit=3, window=300):
+        flash('Too many reset requests. Please wait 5 minutes.', 'error')
+        return render_template('login.html', csrf_token=generate_csrf())
+
+    email = request.form.get('email', '').strip().lower()
+    if not valid_email(email):
+        flash('Please enter a valid email address.', 'error')
+        return render_template('login.html', csrf_token=generate_csrf())
+
+    # Always show same message to prevent email enumeration
+    if user_exists(email):
+        token = create_reset_token(email)
+        send_password_reset_email(email, token)
+
+    flash('If that email is registered, a reset link has been sent.', 'success')
+    return redirect(url_for('login_page'))
+
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Password reset page (accessed via emailed link)."""
+    if request.method == 'GET':
+        if not is_reset_token_valid(token):
+            flash('This reset link is invalid or has expired. Please request a new one.', 'error')
+            return redirect(url_for('login_page'))
+        return render_template('reset_password.html', token=token, csrf_token=generate_csrf())
+
+    if not validate_csrf(request.form.get('csrf_token', '')):
+        flash('Invalid request.', 'error')
+        return redirect(url_for('login_page'))
+
+    password = request.form.get('password', '')
+    confirm  = request.form.get('confirm_password', '')
+
+    if not valid_password(password):
+        flash('Password must be 8+ characters with 1 uppercase letter and 1 number.', 'error')
+        return render_template('reset_password.html', token=token, csrf_token=generate_csrf())
+
+    if password != confirm:
+        flash('Passwords do not match.', 'error')
+        return render_template('reset_password.html', token=token, csrf_token=generate_csrf())
+
+    email = consume_reset_token(token)
+    if not email:
+        flash('Reset link expired or already used. Please request a new one.', 'error')
+        return redirect(url_for('login_page'))
+
+    if update_password(email, password):
+        flash('Password updated successfully! Please log in.', 'success')
+    else:
+        flash('Could not update password. Please try again.', 'error')
+
+    return redirect(url_for('login_page'))
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been signed out.', 'info')
+    return redirect(url_for('login_page'))
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# MAIN APP ROUTES  (protected — must be logged in)
+# ════════════════════════════════════════════════════════════════════════════
+>>>>>>> Stashed changes
 
 @app.route('/')
 def index():
