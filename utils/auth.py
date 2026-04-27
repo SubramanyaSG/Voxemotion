@@ -66,37 +66,53 @@ def _print_invalid_jwt_help() -> None:
     print('   4) Restart the app.')
 
 
-def init_firebase(force_reload: bool = False) -> bool:
+def init_firebase() -> bool:
     global _fb_app, _fb_db, _fb_auth_mod, USE_FIREBASE
+
+    # Try environment variable first (for hosted server)
+    creds_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+    if creds_json:
+        try:
+            import firebase_admin, json, tempfile
+            from firebase_admin import credentials, firestore, auth as fba
+            cred_dict = json.loads(creds_json)
+            with tempfile.NamedTemporaryFile(
+                    mode='w', suffix='.json', delete=False) as tmp:
+                json.dump(cred_dict, tmp)
+                tmp_path = tmp.name
+            if not firebase_admin._apps:
+                cred    = credentials.Certificate(tmp_path)
+                _fb_app = firebase_admin.initialize_app(cred)
+            else:
+                _fb_app = firebase_admin.get_app()
+            os.remove(tmp_path)
+            _fb_db       = firestore.client()
+            _fb_auth_mod = fba
+            USE_FIREBASE = True
+            print('✅ Firebase connected via environment variable.')
+            return True
+        except Exception as e:
+            print(f'Firebase env init failed: {e}')
+
+    # Fall back to local file
     if not os.path.exists(FIREBASE_CREDENTIALS):
-        print('⚠  firebase_credentials.json not found → LOCAL mode (users.json)')
+        print('⚠  No Firebase credentials → LOCAL mode (users.json)')
         return False
     try:
         import firebase_admin
         from firebase_admin import credentials, firestore, auth as fba
-        if force_reload and firebase_admin._apps:
-            for app in list(firebase_admin._apps.values()):
-                firebase_admin.delete_app(app)
-
         if not firebase_admin._apps:
-            cred_dict = _load_firebase_credential_dict()
-            if not cred_dict:
-                USE_FIREBASE = False
-                return False
-            cred    = credentials.Certificate(cred_dict)
+            cred    = credentials.Certificate(FIREBASE_CREDENTIALS)
             _fb_app = firebase_admin.initialize_app(cred)
         else:
             _fb_app = firebase_admin.get_app()
         _fb_db       = firestore.client()
         _fb_auth_mod = fba
         USE_FIREBASE = True
-        print('✅  Firebase Firestore connected.')
+        print('✅ Firebase connected via file.')
         return True
     except Exception as e:
-        if _is_invalid_jwt_signature_error(e):
-            _print_invalid_jwt_help()
-        print(f'⚠  Firebase init failed: {e} → LOCAL mode')
-        USE_FIREBASE = False
+        print(f'Firebase init failed: {e} → LOCAL mode')
         return False
 
 
