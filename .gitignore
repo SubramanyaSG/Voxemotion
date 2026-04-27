@@ -20,7 +20,7 @@ env/
 outputs/*.wav
 outputs/*.png
 outputs/*.csv
-models/*.pth
+#models/*.pth
 
 # OS
 .DS_Store
