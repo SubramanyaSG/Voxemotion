@@ -220,7 +220,7 @@ def valid_password(pw: str) -> bool:
 
 
 def valid_fullname(name: str) -> bool:
-    return bool(re.match(r"^[A-Za-z]+(?:[ '-][A-Za-z]+)*$", name))
+    return bool(re.match(r'^[A-Za-z]+$', name))
 
 
 def valid_dob(dob: str) -> bool:

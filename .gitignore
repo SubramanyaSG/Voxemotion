@@ -1,38 +1,27 @@
-# ── Secrets – NEVER commit these ─────────────────
+# Secrets
+.env
 firebase_credentials.json
 users.json
-*.env
-.env
-.env.*
 
-# ── Python ────────────────────────────────────────
-venv/
+# Python
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
 .Python
+venv/
+env/
 *.egg-info/
-dist/
-build/
 
-# ── Large output files ────────────────────────────
+# VS Code
+.vscode/
+*.code-workspace
+
+# Large outputs
 outputs/*.wav
 outputs/*.png
 outputs/*.csv
 models/*.pth
 
-# ── Jupyter ───────────────────────────────────────
-.ipynb_checkpoints/
-*.ipynb_checkpoints
-
-# ── OS ────────────────────────────────────────────
+# OS
 .DS_Store
 Thumbs.db
-desktop.ini
-
-# ── IDE ───────────────────────────────────────────
-.vscode/
-.idea/
-*.swp
-*.swo

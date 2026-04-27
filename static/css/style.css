@@ -645,3 +645,30 @@ textarea::placeholder { color: rgba(120, 120, 168, 0.55); }
   .card        { padding: 1.4rem 1.2rem; }
   .player-controls { gap: 0.6rem; }
 }
+
+
+/* ── Site footer bar (main app) ──────────────────── */
+.site-footer-bar {
+  position: relative; z-index: 10;
+  background: rgba(12,12,30,0.95);
+  border-top: 1px solid rgba(110,86,255,0.15);
+  padding: 1rem 3rem;
+  margin-top: 2rem;
+}
+.site-footer-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; align-items: center; gap: 1rem;
+  flex-wrap: wrap; font-size: 0.8rem;
+}
+.footer-brand { font-family: var(--font-display); font-weight: 700; color: #fff; }
+.footer-sep   { color: rgba(110,86,255,0.4); }
+.footer-support { color: var(--text-muted); }
+.footer-support a { color: var(--accent-2); text-decoration: none; }
+.footer-support a:hover { text-decoration: underline; }
+.footer-logout {
+  margin-left: auto; color: var(--text-muted); text-decoration: none;
+  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em;
+  border: 1px solid rgba(255,80,80,0.3); border-radius: 6px;
+  padding: 0.25rem 0.7rem; transition: all 0.2s;
+}
+.footer-logout:hover { border-color: #ff5252; color: #ff5252; }

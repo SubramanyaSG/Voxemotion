@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # ============================================================
 # ⚙️  EDIT THESE PATHS TO MATCH YOUR SYSTEM
 # ============================================================
-DATASET_ROOT = r'D:\Downloads\tts_emotion_project_v2\Emotion Speech Dataset1\English'
+DATASET_ROOT = r'D:\7th Sem\Major Project - 2\Code\ets\Emotion Speech Dataset1\English'
 OUTPUT_DIR   = os.path.join(BASE_DIR, 'outputs')
 MODEL_DIR    = os.path.join(BASE_DIR, 'models')
 # ============================================================
