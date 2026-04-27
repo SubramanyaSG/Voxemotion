@@ -1,14 +1,16 @@
 # ============================================================
-# VoxEmotion – Requirements  (Python 3.10.11)
+# VoxEmotion v2 – Requirements (Python 3.10.x)
+# IMPORTANT: librosa and audioread are REMOVED.
+# Audio I/O uses soundfile + resampy + scipy only.
+# This eliminates the pkg_resources error entirely.
 # ============================================================
 
 # ── Deep Learning ───────────────────────────────────────────
 torch==2.1.0
 torchaudio==2.1.0
-# Install PyTorch separately with this command:
-# pip install torch==2.1.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
+# CPU-only install (default). For GPU see README.
 
-# ── Audio I/O 
+# ── Audio I/O  
 soundfile==0.12.1
 soxr==0.3.7
 scipy==1.11.4
@@ -40,10 +42,11 @@ pdfminer.six==20231228
 Unidecode==1.3.8
 inflect==7.3.1
 
-# ── Auth & Security ─────────────────────────────────────────
-bcrypt==4.1.2
-firebase-admin==6.5.0
-
-# ── Setuptools (fixes pkg_resources on Python 3.12) ─────────
+# ── Setuptools shim (ensures pkg_resources exists on Py 3.12) ──
 setuptools>=69.0.0
-python-dotenv
+
+# ── Jupyter ─────────────────────────────────────────────────
+jupyter==1.0.0
+notebook==7.0.8
+ipykernel==6.29.2
+ipywidgets==8.1.2

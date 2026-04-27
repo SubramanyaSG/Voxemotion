@@ -1,1 +1,0 @@
-echo "Generated audio files stored here" > outputs/keep_outputs.txt

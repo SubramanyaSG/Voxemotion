@@ -102,18 +102,6 @@ Download from: https://www.python.org/downloads/release/python-31011/
 During installation:
 - ✅ Check **"Add Python to PATH"**
 - ✅ Check **"Install for all users"**
-- 
-
-or
-
-(Recomended) download anaconda or min conda from: https://www.anaconda.com/download
-
-then run the below command in terminal
-
-'''cmd
-conda create -n voxemotion python=3.10.11
-conda activate voxemotion
-'''
 
 Verify:
 ```cmd
