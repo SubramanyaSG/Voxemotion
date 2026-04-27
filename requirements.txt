@@ -12,6 +12,7 @@ torchaudio==2.1.0
 soundfile==0.12.1
 soxr==0.3.7
 scipy==1.11.4
+librosa
 
 # ── Numerics ────────────────────────────────────────────────
 numpy==1.26.4
