@@ -11,12 +11,40 @@ import secrets
 # ── Base directory (project root) ─────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
+def _load_dotenv_file() -> None:
+    """Load key=value pairs from .env without requiring external packages."""
+    env_path = os.path.join(BASE_DIR, '.env')
+    if not os.path.exists(env_path):
+        return
+
+    try:
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception as e:
+        print(f'Warning: could not load .env file: {e}')
+
+
+_load_dotenv_file()
+
 # ============================================================
 # ⚙️  EDIT THESE PATHS TO MATCH YOUR SYSTEM
 # ============================================================
-DATASET_ROOT = r'D:\Downloads\tts_emotion_project_v2\Emotion Speech Dataset1\English'
-OUTPUT_DIR   = os.path.join(BASE_DIR, 'outputs')
-MODEL_DIR    = os.path.join(BASE_DIR, 'models')
+# On hosted server, dataset is NOT present — that's fine
+# Synthesis uses Tacotron2, not the dataset directly
+DATASET_ROOT = os.environ.get('DATASET_ROOT', '')
+
+# Use relative paths so they work on any server
+OUTPUT_DIR = os.path.join(BASE_DIR, 'outputs')
+MODEL_DIR  = os.path.join(BASE_DIR, 'models')
 # ============================================================
 
 # ── Audio settings ────────────────────────────────────────────────────────────
@@ -53,7 +81,8 @@ FIREBASE_CREDENTIALS = os.path.join(BASE_DIR, 'firebase_credentials.json')
 
 # ── SMTP Email (optional – for password reset emails) ─────────────────────────
 SMTP_EMAIL    = os.environ.get('SMTP_EMAIL',        'support_voxemotion@gmail.com')
-SMTP_PASSWORD = os.environ.get('SMTP_APP_PASSWORD', '')  # Gmail App Password
+SMTP_PASSWORD = (os.environ.get('SMTP_APP_PASSWORD')
+                 or os.environ.get('SMTP_PASSWORD', ''))  # Gmail App Password
 APP_BASE_URL  = os.environ.get('APP_BASE_URL',      f'http://127.0.0.1:{PORT}')
 
 # ── Ensure output directories exist ──────────────────────────────────────────
